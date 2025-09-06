@@ -15,8 +15,8 @@ use crate::error::CssError;
 use bevy_app::{App, Plugin};
 use bevy_flair_core::{ComponentPropertyId, ComponentPropertyRef, PropertyValue};
 use bevy_flair_style::{DynamicParseVarTokens, ToCss};
-use bevy_text::{FontSmoothing, JustifyText, LineBreak, LineHeight};
-use bevy_ui::widget::NodeImageMode;
+use bevy_text::{FontSmoothing, Justify, LineBreak, LineHeight};
+use bevy_ui::widget::{NodeImageMode, TextShadow};
 
 /// A function that parses a CSS type.
 /// When the function succeeds, it should return a [`bevy_flair_core::ReflectValue`].
@@ -138,7 +138,7 @@ impl Plugin for ReflectParsePlugin {
                 FlexWrap,
                 GridAutoFlow,
                 FontSmoothing,
-                JustifyText,
+                Justify,
                 LineBreak,
             )
         );

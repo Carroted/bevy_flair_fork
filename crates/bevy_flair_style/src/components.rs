@@ -22,7 +22,7 @@ use crate::style_sheet::{
     RulesetProperty, StyleSheetRulesetId, VarResolver, ruleset_property_to_output,
 };
 use bevy_asset::{AssetId, Handle};
-use bevy_ecs::component::HookContext;
+use bevy_ecs::lifecycle::HookContext;
 use bevy_ecs::world::DeferredWorld;
 use bevy_reflect::TypeRegistry;
 use bevy_text::TextSpan;
@@ -878,15 +878,15 @@ impl NodeProperties {
     pub(crate) fn has_pending_events(&self) -> bool {
         !self.pending_transition_events.is_empty()
     }
-    pub(crate) fn emit_pending_events(&mut self, mut entity_commands: EntityCommands) {
+    pub(crate) fn emit_pending_events(&mut self, commands: &mut Commands, entity: Entity) {
         for event in self.pending_transition_events.drain(..) {
             trace!(
                 "TransitionEvent: {event_type:?}({property_id:?}) on {entity:?}",
                 event_type = event.event_type,
                 property_id = event.property_id,
-                entity = entity_commands.id()
+                entity = entity,
             );
-            entity_commands.trigger(event);
+            commands.trigger(event);
         }
     }
 

@@ -8,7 +8,7 @@ use bevy_flair_core::ReflectValue;
 use bevy_math::Vec2;
 use bevy_reflect::FromType;
 use bevy_text::LineHeight;
-use bevy_ui::TextShadow;
+use bevy_ui::prelude::TextShadow;
 use cssparser::{Parser, Token, match_ignore_ascii_case};
 
 const NONE_TEXT_SHADOW: TextShadow = TextShadow {
@@ -105,7 +105,7 @@ mod tests {
     use bevy_color::palettes::css;
     use bevy_math::Vec2;
     use bevy_text::LineHeight;
-    use bevy_ui::TextShadow;
+    use bevy_ui::prelude::TextShadow;
 
     #[test]
     fn string() {

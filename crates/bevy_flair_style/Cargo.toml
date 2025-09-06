@@ -32,6 +32,7 @@ smallvec = "1.14"
 bevy_app = { workspace = true }
 bevy_asset = { workspace = true }
 bevy_color = { workspace = true }
+bevy_camera = { workspace = true }
 bevy_ecs = { workspace = true }
 bevy_image = { workspace = true }
 bevy_input_focus = { workspace = true }
@@ -43,7 +44,6 @@ bevy_time = { workspace = true }
 bevy_ui = { workspace = true }
 bevy_utils = { workspace = true }
 bevy_window = { workspace = true }
-
 tracing = "0.1"
 bevy_flair_core = { workspace = true }
 

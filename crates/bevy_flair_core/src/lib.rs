@@ -209,9 +209,7 @@ mod tests {
         let mut app = App::new();
 
         app.add_plugins((
-            UiPlugin {
-                enable_rendering: false,
-            },
+            UiPlugin,
             BevyUiPropertiesPlugin,
         ));
 

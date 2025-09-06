@@ -339,12 +339,12 @@ impl Plugin for FlairStylePlugin {
 mod tests {
     use super::*;
     use bevy_app::App;
-    use bevy_asset::weak_handle;
+    use bevy_asset::{uuid_handle};
     use bevy_ecs::system::RunSystemOnce;
     use bevy_ui::Node;
 
     const TEST_STYLE_SHEET: NodeStyleSheet =
-        NodeStyleSheet::new(weak_handle!("fe981062-17ce-46e4-999a-5a61ea8fe722"));
+        NodeStyleSheet::new(uuid_handle!("fe981062-17ce-46e4-999a-5a61ea8fe722"));
 
     const ROOT: (TestNode, NodeStyleSheet) = (TestNode, TEST_STYLE_SHEET);
 
