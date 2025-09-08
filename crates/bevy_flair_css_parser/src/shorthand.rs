@@ -332,7 +332,10 @@ fn parse_overflow(parser: &mut Parser) -> ShorthandParseResult {
 }
 
 define_css_properties! {
-    const BORDER_COLOR = "border-color";
+    const BORDER_TOP_COLOR = "border-top-color";
+    const BORDER_RIGHT_COLOR = "border-right-color";
+    const BORDER_BOTTOM_COLOR = "border-bottom-color";
+    const BORDER_LEFT_COLOR = "border-left-color";
 }
 
 fn parse_border(parser: &mut Parser) -> ShorthandParseResult {
@@ -348,7 +351,10 @@ fn parse_border(parser: &mut Parser) -> ShorthandParseResult {
     if let Ok(color) =
         parser.try_parse_with(|parser| parse_property_value_with(parser, parse_color))
     {
-        result.push((BORDER_COLOR, color.map(ReflectValue::Color)));
+        result.push((BORDER_TOP_COLOR, color.clone().map(ReflectValue::Color)));
+        result.push((BORDER_RIGHT_COLOR, color.clone().map(ReflectValue::Color)));
+        result.push((BORDER_BOTTOM_COLOR, color.clone().map(ReflectValue::Color)));
+        result.push((BORDER_LEFT_COLOR, color.map(ReflectValue::Color)));
     }
 
     Ok(result)
@@ -372,6 +378,21 @@ fn parse_border_width(parser: &mut Parser) -> ShorthandParseResult {
         (BORDER_TOP_WIDTH, top),
         (BORDER_BOTTOM_WIDTH, bottom),
     ])
+}
+
+fn parse_border_color(parser: &mut Parser) -> ShorthandParseResult {
+    if let Ok(color) =
+        parser.try_parse_with(|parser| parse_property_value_with(parser, parse_color))
+    {
+        let color = color.map(ReflectValue::Color);
+        return Ok(vec![
+            (BORDER_LEFT_COLOR, color.clone()),
+            (BORDER_RIGHT_COLOR, color.clone()),
+            (BORDER_TOP_COLOR, color.clone()),
+            (BORDER_BOTTOM_COLOR, color),
+        ]);
+    }
+    Err(CssError::from(parser.new_error_for_next_token::<()>()))
 }
 
 define_css_properties! {
@@ -626,7 +647,10 @@ pub(crate) fn register_default_shorthand_properties(registry: &mut ShorthandProp
             BORDER_RIGHT_WIDTH,
             BORDER_TOP_WIDTH,
             BORDER_BOTTOM_WIDTH,
-            BORDER_COLOR,
+            BORDER_TOP_COLOR,
+            BORDER_RIGHT_COLOR,
+            BORDER_BOTTOM_COLOR,
+            BORDER_LEFT_COLOR,
         ],
         parse_border,
     );
@@ -639,6 +663,16 @@ pub(crate) fn register_default_shorthand_properties(registry: &mut ShorthandProp
             BORDER_BOTTOM_RIGHT_RADIUS,
         ],
         parse_border_radius,
+    );
+    registry.register_new(
+        "border-color",
+        [
+            BORDER_TOP_COLOR,
+            BORDER_RIGHT_COLOR,
+            BORDER_BOTTOM_COLOR,
+            BORDER_LEFT_COLOR,
+        ],
+        parse_border_color,
     );
     registry.register_new("margin", ui_rect_sub_properties("margin"), |parser| {
         parse_ui_rect("margin", parser)

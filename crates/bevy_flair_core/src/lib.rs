@@ -116,7 +116,10 @@ default_properties! {
     "grid-column" { Node[".grid_column"] },
 
     // Misc components
-    "border-color" { BorderColor[".0"] },
+    "border-top-color" { BorderColor[".top"] },
+    "border-right-color" { BorderColor[".right"] },
+    "border-bottom-color" { BorderColor[".bottom"] },
+    "border-left-color" { BorderColor[".left"] },
     "background-color" { BackgroundColor[".0"] },
     // We need to manually register all border-radius sub-properties
     "border-top-left-radius" { BorderRadius[".top_left"] },
