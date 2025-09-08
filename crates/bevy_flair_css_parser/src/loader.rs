@@ -1,6 +1,6 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use crate::ShorthandPropertyRegistry;
+use crate::{CssError, CssErrorCode, ShorthandPropertyRegistry};
 use crate::error::ErrorReportGenerator;
 use crate::imports_parser::extract_imports;
 use crate::parser::{
@@ -69,6 +69,73 @@ pub struct CssStyleLoader {
     shorthand_property_registry: ShorthandPropertyRegistry,
 }
 
+pub fn get_sandboxed_path(
+    roots: &Vec<PathBuf>,
+    user_path_str: &str,
+    current_thing_path: &PathBuf,
+) -> Option<PathBuf> {
+    if roots.is_empty() {
+        return None;
+    }
+
+    let primary_root = &roots[0];
+    let user_path = Path::new(user_path_str);
+
+    // This will hold the path we build based on the logic below.
+    let final_path: PathBuf;
+
+    if user_path.is_absolute() {
+        // --- NEW LOGIC FOR ABSOLUTE PATHS ---
+        // First, check if the provided absolute path is ALREADY inside a sandbox.
+        // This handles cases where a resolved sandboxed path from a previous op
+        // (like path.resolve) is passed back to another op.
+        if is_path_in_any_sandbox(user_path, &roots) {
+            // The path is already valid and sandboxed. Normalize it and use it directly.
+            final_path = match std::fs::canonicalize(user_path) {
+                Ok(p) => p,
+                _ => return None,
+            };
+        } else {
+            // If not, treat it as a "virtual" absolute path relative to the PRIMARY sandbox root.
+            // This is for when JS asks for something like "/assets/style.css".
+            let stripped_path = user_path.strip_prefix("/").unwrap_or(user_path);
+            final_path = match std::fs::canonicalize(primary_root.join(stripped_path)) {
+                Ok(p) => p,
+                _ => return None,
+            };
+        }
+    } else {
+        // Join the caller's directory with the relative path.
+        final_path = match std::fs::canonicalize(current_thing_path.join(user_path)) {
+            Ok(p) => p,
+            _ => return None,
+        };
+    };
+
+    // --- FINAL SECURITY CHECKS (APPLIES TO ALL PATHS) ---
+    if !is_path_in_any_sandbox(&final_path, &roots) {
+        return None;
+    }
+
+    // Check for symlink escapes after canonicalization.
+    match std::fs::canonicalize(&final_path) {
+        Ok(p) if !is_path_in_any_sandbox(&p, &roots) => {
+            return None;
+        }
+        Ok(p) => Some(p),
+        _ => None,
+    }
+}
+
+fn is_path_in_any_sandbox(path_to_check: &Path, sandbox_roots: &[PathBuf]) -> bool {
+    for root in sandbox_roots {
+        if path_to_check.starts_with(root) {
+            return true;
+        }
+    }
+    false
+}
+
 impl CssStyleLoader {
     /// Extensions that this loader can load. basically `.css`
     pub const EXTENSIONS: &'static [&'static str] = &["css"];
@@ -92,6 +159,7 @@ impl CssStyleLoader {
         mut contents: String,
         asset_server: &AssetServer,
         settings: CssStyleLoaderSetting,
+        roots: &Vec<PathBuf>,
     ) -> Result<StyleSheet, CssStyleLoaderError> {
         // First we try to extract all imports
         let mut import_paths = Vec::new();
@@ -104,10 +172,27 @@ impl CssStyleLoader {
 
         for import_path in import_paths {
             // get path relative to the current css file
-            let import_pathbuf = path
-                .parent()
-                .map(|p| p.join(&import_path))
-                .unwrap_or_else(|| PathBuf::from(&import_path));
+            // let import_pathbuf = path
+            //     .parent()
+            //     .map(|p| p.join(&import_path))
+            //     .unwrap_or_else(|| PathBuf::from(&import_path));
+            let import_pathbuf = if let Some(parent) = path.parent() {
+                if let Some(sandboxed_path) =
+                    get_sandboxed_path(roots, import_path.as_str(), &parent.to_path_buf())
+                {
+                    sandboxed_path
+                } else {
+                    return Err(CssStyleLoaderError::Report(format!(
+                        "Import path '{}' could not be resolved within sandbox roots",
+                        import_path
+                    )));
+                }
+            } else {
+                return Err(CssStyleLoaderError::Report(format!(
+                    "Import path '{}' could not be resolved because the current CSS file has no parent directory",
+                    import_path
+                )));
+            };
             let content = std::fs::read_to_string(&import_pathbuf).map_err(|e| {
                 CssStyleLoaderError::Report(format!(
                     "Failed to read imported CSS file '{}': {}",
@@ -115,7 +200,7 @@ impl CssStyleLoader {
                     e
                 ))
             })?;
-            imports.insert(import_path, self.load(&import_pathbuf, content, asset_server, settings)?);
+            imports.insert(import_path, self.load(&import_pathbuf, content, asset_server, settings, &roots)?);
         }
 
         let path_display = path.display().to_string();
@@ -273,6 +358,8 @@ impl CssStyleLoader {
             item: CssStyleSheetItem,
             builder: &mut StyleSheetBuilder,
             report_generator: &mut ErrorReportGenerator,
+            roots: &Vec<PathBuf>,
+            path: &PathBuf,
         ) {
             match item {
                 CssStyleSheetItem::EmbedStylesheet(style_sheet, layer) => {
@@ -280,7 +367,7 @@ impl CssStyleLoader {
                 }
                 CssStyleSheetItem::Inner(items) => {
                     for item in items {
-                        processor(item, builder, report_generator);
+                        processor(item, builder, report_generator, roots, path);
                     }
                 }
                 CssStyleSheetItem::LayersDefinition(layers) => {
@@ -293,7 +380,23 @@ impl CssStyleLoader {
                     for error in font_face.errors {
                         report_generator.add_error(error);
                     }
-                    builder.register_font_face(font_face.family_name, font_face.source);
+                    //builder.register_font_face(font_face.family_name, get_sandboxed_path(&roots, font_face.source.as_str(), path.parent().unwrap().as).unwrap().to_str().unwrap().to_string());
+
+                    // instead we will only register if we find it
+                    if let Some(parent) = path.parent() {
+                        if let Some(sandboxed_path) =
+                            get_sandboxed_path(roots, font_face.source.as_str(), &parent.to_path_buf())
+                        {
+                            builder.register_font_face(
+                                font_face.family_name,
+                                sandboxed_path.to_str().unwrap().to_string(),
+                            );
+                        } else {
+                            report_generator.add_error(CssError::new_unlocated(CssErrorCode::new_custom(94, "aaa"), "Couldnt find  font!!"));
+                        }
+                    } else {
+                        report_generator.add_error(CssError::new_unlocated(CssErrorCode::new_custom(94, "aaa"), "Couldnt find  font!!"));
+                    }
                 }
                 CssStyleSheetItem::AnimationKeyFrames(keyframes) => {
                     let name = keyframes.name;
@@ -354,7 +457,7 @@ impl CssStyleLoader {
             &imports,
             &contents,
             |item| {
-                processor(item, &mut builder, &mut report_generator);
+                processor(item, &mut builder, &mut report_generator, roots, path);
             },
         );
 
