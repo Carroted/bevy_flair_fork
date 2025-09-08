@@ -40,6 +40,7 @@ pub(crate) fn parse_val(parser: &mut Parser) -> Result<Val, CssError> {
                 "vh" => Val::Vh(*value),
                 "vmin" => Val::VMin(*value),
                 "vmax" => Val::VMax(*value),
+                "rem" => Val::Px(*value * 16.0), // Assuming root font-size of 16px
                 _ => {
                     return Err(CssError::new_located(
                         &next,
