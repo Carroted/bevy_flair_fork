@@ -15,7 +15,15 @@ pub(crate) fn parse_f32(parser: &mut Parser) -> Result<f32, CssError> {
     let next = parser.located_next()?;
     Ok(match &*next {
         Token::Number { value, .. } => *value,
-        Token::Dimension { value, unit, .. } if unit.eq_ignore_ascii_case("px") => *value,
+        Token::Dimension { value, unit, .. } => if unit.eq_ignore_ascii_case("px") { *value } else if unit.eq_ignore_ascii_case("rem") {
+            *value * 16.0 // Assuming root font-size of 16px
+        } else {
+            return Err(CssError::new_located(
+                &next,
+                error_codes::UNEXPECTED_F32_TOKEN,
+                format!("Dimension '{unit}' is not recognized for f32. Valid dimensions are 'px' | 'rem'")
+            ));
+        },
         _ => {
             return Err(CssError::new_located(
                 &next,
