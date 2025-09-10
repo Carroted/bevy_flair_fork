@@ -6,7 +6,7 @@ use bevy_app::{App, Plugin};
 use bevy_color::{Color, Mix, Oklaba};
 use bevy_math::{Curve, FloatExt, StableInterpolate, curve::CurveExt};
 use bevy_reflect::{FromReflect, FromType};
-use bevy_ui::Val;
+use bevy_ui::{BoxShadow, Outline, ShadowStyle, Val};
 use std::any::type_name;
 use std::sync::Arc;
 use tracing::warn;
@@ -221,6 +221,77 @@ impl FromType<f32> for ReflectAnimatable {
     }
 }
 
+
+fn shadow_style_interpolate(a: &ShadowStyle, b: &ShadowStyle, t: f32) -> ShadowStyle {
+    ShadowStyle {
+        color: color_interpolate(&a.color, &b.color, t),
+        x_offset: val_interpolate(&a.x_offset, &b.x_offset, t),
+        y_offset: val_interpolate(&a.y_offset, &b.y_offset, t),
+        blur_radius: val_interpolate(&a.blur_radius, &b.blur_radius, t),
+        spread_radius: val_interpolate(&a.spread_radius, &b.spread_radius, t),
+    }
+}
+
+fn box_shadow_interpolate(a: &BoxShadow, b: &BoxShadow, t: f32) -> BoxShadow {
+    if t >= 1.0 {
+        return b.clone();
+    }
+    if a.0.len() != b.0.len() {
+        if !a.0.is_empty() && !b.0.is_empty() {
+            warn!(
+                "Cannot interpolate `box-shadow` with different number of shadows. Start: {}, End: {}",
+                a.0.len(),
+                b.0.len()
+            );
+        }
+        // Non-interpolating behavior for now, just snap at the end.
+        return a.clone();
+    }
+
+    let styles = a
+        .0
+        .iter()
+        .zip(b.0.iter())
+        .map(|(a_style, b_style)| shadow_style_interpolate(a_style, b_style, t))
+        .collect();
+
+    BoxShadow(styles)
+}
+
+impl FromType<BoxShadow> for ReflectAnimatable {
+    fn from_type() -> Self {
+        ReflectAnimatable {
+            create_property_transition_fn: |start, end| {
+                create_property_transition_with::<BoxShadow, _>(start, end, box_shadow_interpolate)
+            },
+            create_keyframes_animation_fn: |keyframes| {
+                create_keyframe_animation_with::<BoxShadow, _>(keyframes, box_shadow_interpolate)
+            },
+        }
+    }
+}
+
+fn outline_interpolate(a: &Outline, b: &Outline, t: f32) -> Outline {
+    Outline {
+        width: val_interpolate(&a.width, &b.width, t),
+        offset: val_interpolate(&a.offset, &b.offset, t),
+        color: color_interpolate(&a.color, &b.color, t),
+    }
+}
+
+impl FromType<Outline> for ReflectAnimatable {
+    fn from_type() -> Self {
+        ReflectAnimatable {
+            create_property_transition_fn: |start, end| {
+                create_property_transition_with::<Outline, _>(start, end, outline_interpolate)
+            },
+            create_keyframes_animation_fn: |keyframes| {
+                create_keyframe_animation_with::<Outline, _>(keyframes, outline_interpolate)
+            },
+        }
+    }
+}
+
 /// A Bevy plugin that registers the [`ReflectAnimatable`] type data for [`f32`], [`Color`], and [`Val`].
 pub struct ReflectAnimationsPlugin;
 
@@ -228,6 +299,8 @@ impl Plugin for ReflectAnimationsPlugin {
     fn build(&self, app: &mut App) {
         app.register_type_data::<f32, ReflectAnimatable>()
             .register_type_data::<Color, ReflectAnimatable>()
-            .register_type_data::<Val, ReflectAnimatable>();
+            .register_type_data::<Val, ReflectAnimatable>()
+            .register_type_data::<BoxShadow, ReflectAnimatable>()
+            .register_type_data::<Outline, ReflectAnimatable>();
     }
 }
