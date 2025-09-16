@@ -182,18 +182,21 @@ impl CssStyleLoader {
                 {
                     sandboxed_path
                 } else {
+                    println!("Import path '{}' could not be resolved within sandbox roots", import_path);
                     return Err(CssStyleLoaderError::Report(format!(
                         "Import path '{}' could not be resolved within sandbox roots",
                         import_path
                     )));
                 }
             } else {
+                println!("Current CSS file has no parent directory, cannot resolve import path '{}'", import_path);
                 return Err(CssStyleLoaderError::Report(format!(
                     "Import path '{}' could not be resolved because the current CSS file has no parent directory",
                     import_path
                 )));
             };
             let content = std::fs::read_to_string(&import_pathbuf).map_err(|e| {
+                println!("Failed to read imported CSS file '{}': {}", import_pathbuf.display(), e);
                 CssStyleLoaderError::Report(format!(
                     "Failed to read imported CSS file '{}': {}",
                     import_pathbuf.display(),

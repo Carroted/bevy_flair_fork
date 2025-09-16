@@ -16,7 +16,7 @@ pub(crate) fn parse_f32(parser: &mut Parser) -> Result<f32, CssError> {
     Ok(match &*next {
         Token::Number { value, .. } => *value,
         Token::Dimension { value, unit, .. } => if unit.eq_ignore_ascii_case("px") { *value } else if unit.eq_ignore_ascii_case("rem") {
-            *value * 16.0 // Assuming root font-size of 16px
+            *value * 12.0 // Assuming root font-size of 16px
         } else {
             return Err(CssError::new_located(
                 &next,
@@ -48,7 +48,7 @@ pub(crate) fn parse_val(parser: &mut Parser) -> Result<Val, CssError> {
                 "vh" => Val::Vh(*value),
                 "vmin" => Val::VMin(*value),
                 "vmax" => Val::VMax(*value),
-                "rem" => Val::Px(*value * 16.0), // Assuming root font-size of 16px
+                "rem" => Val::Px(*value * 12.0), // Assuming root font-size of 16px
                 _ => {
                     return Err(CssError::new_located(
                         &next,
