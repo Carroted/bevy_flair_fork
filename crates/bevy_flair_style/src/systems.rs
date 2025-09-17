@@ -558,15 +558,15 @@ pub(crate) fn mark_as_changed_on_style_sheet_change(
                 // TextSpan does not depend on Node
                 commands
                     .entity(entity)
-                    .try_insert((TextColor::default(), TextFont::default()))
+                    .try_insert((FakeTextColor::default(), TextFont::default()))
                     .try_remove::<(TextLayout, TextShadow)>();
             } else {
                 commands
                     .entity(entity)
                     .try_insert((
                         Node::default(),
-                        BackgroundColor::default(),
-                        BorderColor::default(),
+                        FakeBackgroundColor::default(),
+                        FakeBorderColor::default(),
                         BorderRadius::default(),
                         ZIndex::default(),
                     ))
@@ -576,7 +576,7 @@ pub(crate) fn mark_as_changed_on_style_sheet_change(
                     commands
                         .entity(entity)
                         .try_insert((
-                            TextColor::default(),
+                            FakeTextColor::default(),
                             TextFont::default(),
                             TextLayout::default(),
                         ))

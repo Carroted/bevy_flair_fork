@@ -9,7 +9,9 @@ mod static_type_info;
 mod sub_properties;
 
 use bevy_app::{App, Plugin};
-use bevy_ecs::reflect::AppTypeRegistry;
+use bevy_color::Color;
+use bevy_ecs::{component::Component, reflect::AppTypeRegistry};
+use bevy_reflect::Reflect;
 use bevy_text::prelude::*;
 use bevy_ui::prelude::*;
 
@@ -67,6 +69,26 @@ macro_rules! default_properties {
     };
 }
 
+use bevy_ecs::prelude::ReflectComponent;
+use bevy_reflect::prelude::ReflectDefault;
+
+#[derive(Component, Debug, Clone, PartialEq, Default, Reflect)]
+#[reflect(Component, Default)]
+pub struct FakeBorderColor {
+    pub top: BorderColor,
+    pub right: BorderColor,
+    pub bottom: BorderColor,
+    pub left: BorderColor,
+}
+
+#[derive(Component, Debug, Clone, PartialEq, Default, Reflect)]
+#[reflect(Component, Default)]
+pub struct FakeBackgroundColor(pub Color);
+
+#[derive(Component, Debug, Clone, PartialEq, Default, Reflect)]
+#[reflect(Component, Default)]
+pub struct FakeTextColor(pub Color);
+
 default_properties! {
     // Node properties
     "display" { Node[".display"] },
@@ -116,11 +138,11 @@ default_properties! {
     "grid-column" { Node[".grid_column"] },
 
     // Misc components
-    "border-top-color" { BorderColor[".top"] },
-    "border-right-color" { BorderColor[".right"] },
-    "border-bottom-color" { BorderColor[".bottom"] },
-    "border-left-color" { BorderColor[".left"] },
-    "background-color" { BackgroundColor[".0"] },
+    "border-top-color" { FakeBorderColor[".top"] },
+    "border-right-color" { FakeBorderColor[".right"] },
+    "border-bottom-color" { FakeBorderColor[".bottom"] },
+    "border-left-color" { FakeBorderColor[".left"] },
+    "background-color" { FakeBackgroundColor[".0"] },
     // We need to manually register all border-radius sub-properties
     "border-top-left-radius" { BorderRadius[".top_left"] },
     "border-top-right-radius" { BorderRadius[".top_right"] },
@@ -137,7 +159,7 @@ default_properties! {
     "-bevy-image-mode" { insert_if_missing: ImageNode[".image_mode"] },
 
     // Text fields
-    "color" inherit { TextColor[".0"] },
+    "color" inherit { FakeTextColor[".0"] },
     "font-family" inherit { TextFont[".font"] },
     "font-size" inherit { TextFont[".font_size"] },
     "line-height" inherit { TextFont[".line_height"] },
