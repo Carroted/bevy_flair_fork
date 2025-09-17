@@ -194,15 +194,15 @@ impl Plugin for BevyUiPropertiesPlugin {
         // but it helps on tests to not include UiPlugin or TextPlugin
         // just for this
         app.register_type::<Node>()
-            .register_type::<BackgroundColor>()
-            .register_type::<BorderColor>()
+            .register_type::<FakeBackgroundColor>()
+            .register_type::<FakeBorderColor>()
             .register_type::<BorderRadius>()
             .register_type::<BoxShadow>()
             .register_type::<ZIndex>()
             .register_type::<ImageNode>()
             .register_type::<TextLayout>()
             .register_type::<TextFont>()
-            .register_type::<TextColor>()
+            .register_type::<FakeTextColor>()
             .register_type::<TextShadow>()
             .register_type::<TextSpan>();
 
