@@ -75,10 +75,10 @@ use bevy_reflect::prelude::ReflectDefault;
 #[derive(Component, Debug, Clone, PartialEq, Default, Reflect)]
 #[reflect(Component, Default)]
 pub struct FakeBorderColor {
-    pub top: BorderColor,
-    pub right: BorderColor,
-    pub bottom: BorderColor,
-    pub left: BorderColor,
+    pub top: Color,
+    pub right: Color,
+    pub bottom: Color,
+    pub left: Color,
 }
 
 #[derive(Component, Debug, Clone, PartialEq, Default, Reflect)]
