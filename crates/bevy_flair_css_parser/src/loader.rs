@@ -127,19 +127,77 @@ pub fn get_sandboxed_path(
     }
 }
 
-/// On Windows, lexically strips the `\\?\` verbatim prefix.
-/// On other platforms, it's a no-op.
+
 #[cfg(windows)]
-fn strip_verbatim_prefix(p: &Path) -> &Path {
-    // The prefix can be `\\?\` or `\\.\`. We can use a more general check.
-    // However, `Path::strip_prefix` is the most idiomatic way for `\\?\`.
-    p.strip_prefix(r"\\?\").unwrap_or(p)
+use std::ffi::OsString;
+#[cfg(windows)]
+use std::os::windows::ffi::{OsStrExt, OsStringExt};
+
+/// Unconditionally strips the `\\?\` prefix from a Windows path.
+///
+/// This function is the "unsafe" version of `dunce::simplified`. It identifies
+/// paths with a verbatim prefix (like `\\?\C:\...` or `\\?\UNC\server\share\...`)
+/// and removes that prefix, but performs **none** of the safety checks that `dunce` does.
+///
+/// # Warning
+/// The resulting path may be invalid for legacy applications. For example:
+/// - It could be longer than `MAX_PATH` (260 characters).
+/// - It could contain reserved filenames (e.g., `CON`, `LPT1`).
+/// - It could contain otherwise invalid components like `.` or `..`.
+///
+/// Use this function only when you are certain that the receiving application
+/// can handle the resulting path but cannot handle the `\\?\` prefix itself.
+///
+/// # Behavior on Windows
+///
+/// - `\\?\C:\Users\Rust` becomes `C:\Users\Rust`
+/// - `\\?\UNC\server\share\file` becomes `\\server\share\file`
+/// - `\\?\C:\COM1` becomes `C:\COM1` (a problematic path for legacy APIs)
+///
+/// # Behavior on other platforms
+///
+/// This function is a no-op and simply returns a clone of the original path.
+///
+/// # Returns
+///
+/// An owned `PathBuf` with the prefix removed, or a clone of the original path
+/// if it did not have a verbatim prefix.
+#[must_use]
+pub fn strip_verbatim_prefix(path: &Path) -> PathBuf {
+    #[cfg(not(windows))]
+    {
+        return path.to_path_buf();
+    }
+
+    #[cfg(windows)]
+    {
+        // On Windows, paths are WTF-8, which is best handled as a sequence of `u16`s.
+        // This avoids any issues with non-UTF8 paths.
+        let wide_path: Vec<u16> = path.as_os_str().encode_wide().collect();
+
+        // `\\?\` corresponds to the wide characters [92, 92, 63, 92]
+        const VERBATIM_PREFIX: &[u16] = &[b'\\' as u16, b'\\' as u16, b'?' as u16, b'\\' as u16];
+        // `\\?\UNC\` corresponds to the wide characters for that string.
+        const VERBATIM_UNC_PREFIX: &[u16] = &[b'\\' as u16, b'\\' as u16, b'?' as u16, b'\\' as u16, b'U' as u16, b'N' as u16, b'C' as u16, b'\\' as u16];
+
+        if wide_path.starts_with(VERBATIM_UNC_PREFIX) {
+            // Path is `\\?\UNC\server\share`. We want `\\server\share`.
+            // Prepend `\\` and then add the rest of the path.
+            let mut stripped = vec![b'\\' as u16, b'\\' as u16];
+            stripped.extend_from_slice(&wide_path[VERBATIM_UNC_PREFIX.len()..]);
+            PathBuf::from(OsString::from_wide(&stripped))
+        } else if wide_path.starts_with(VERBATIM_PREFIX) {
+            // Path is `\\?\C:\path`. We want `C:\path`.
+            // Just take the slice after the prefix.
+            let stripped = &wide_path[VERBATIM_PREFIX.len()..];
+            PathBuf::from(OsString::from_wide(stripped))
+        } else {
+            // Not a verbatim path, return it as-is.
+            path.to_path_buf()
+        }
+    }
 }
 
-#[cfg(not(windows))]
-fn strip_verbatim_prefix(p: &Path) -> &Path {
-    p
-}
 
 /// Checks if a path is inside any of the given sandbox roots.
 ///
