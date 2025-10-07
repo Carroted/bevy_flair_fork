@@ -127,12 +127,54 @@ pub fn get_sandboxed_path(
     }
 }
 
-fn is_path_in_any_sandbox(path_to_check: &Path, sandbox_roots: &[PathBuf]) -> bool {
+/// On Windows, lexically strips the `\\?\` verbatim prefix.
+/// On other platforms, it's a no-op.
+#[cfg(windows)]
+fn strip_verbatim_prefix(p: &Path) -> &Path {
+    // The prefix can be `\\?\` or `\\.\`. We can use a more general check.
+    // However, `Path::strip_prefix` is the most idiomatic way for `\\?\`.
+    p.strip_prefix(r"\\?\").unwrap_or(p)
+}
+
+#[cfg(not(windows))]
+fn strip_verbatim_prefix(p: &Path) -> &Path {
+    p
+}
+
+/// Checks if a path is inside any of the given sandbox roots.
+///
+/// This function is robust against Windows UNC/verbatim path prefixes (`\\?\`),
+/// symlinks, and relative path components (`..`).
+///
+/// It works in two stages:
+/// 1. **Canonicalize:** Both the path-to-check and the sandbox root are resolved to
+///    their absolute, final filesystem paths using `dunce::canonicalize`.
+/// 2. **Normalize & Compare:** The Windows-specific `\\?\` prefix is lexically
+///    stripped from both canonicalized paths before performing the `starts_with` check.
+///    This handles cases where one path is long (requiring the prefix) and the other is short.
+///
+pub fn is_path_in_any_sandbox(path_to_check: &Path, sandbox_roots: &[PathBuf]) -> bool {
+    // 1. Canonicalize the path we are checking.
+    // If it fails (e.g., path doesn't exist), it cannot be in a sandbox.
+    let Ok(canonical_path) = dunce::canonicalize(path_to_check) else {
+        return false;
+    };
+    // 2. Normalize the canonicalized path by stripping any potential verbatim prefix.
+    let normalized_path = strip_verbatim_prefix(&canonical_path);
+
     for root in sandbox_roots {
-        if path_to_check.starts_with(root) {
-            return true;
+        // 1. Canonicalize the sandbox root. Skip if it's invalid.
+        if let Ok(canonical_root) = dunce::canonicalize(root) {
+            // 2. Normalize the canonicalized root.
+            let normalized_root = strip_verbatim_prefix(&canonical_root);
+
+            // 3. Now, perform the comparison on the normalized paths.
+            if normalized_path.starts_with(normalized_root) {
+                return true;
+            }
         }
     }
+
     false
 }
 
