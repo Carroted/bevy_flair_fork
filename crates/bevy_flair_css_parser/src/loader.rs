@@ -91,7 +91,7 @@ pub fn get_sandboxed_path(
         // (like path.resolve) is passed back to another op.
         if is_path_in_any_sandbox(user_path, &roots) {
             // The path is already valid and sandboxed. Normalize it and use it directly.
-            final_path = match std::fs::canonicalize(user_path) {
+            final_path = match dunce::canonicalize(user_path) {
                 Ok(p) => p,
                 _ => return None,
             };
@@ -99,14 +99,14 @@ pub fn get_sandboxed_path(
             // If not, treat it as a "virtual" absolute path relative to the PRIMARY sandbox root.
             // This is for when JS asks for something like "/assets/style.css".
             let stripped_path = user_path.strip_prefix("/").unwrap_or(user_path);
-            final_path = match std::fs::canonicalize(primary_root.join(stripped_path)) {
+            final_path = match dunce::canonicalize(primary_root.join(stripped_path)) {
                 Ok(p) => p,
                 _ => return None,
             };
         }
     } else {
         // Join the caller's directory with the relative path.
-        final_path = match std::fs::canonicalize(current_thing_path.join(user_path)) {
+        final_path = match dunce::canonicalize(current_thing_path.join(user_path)) {
             Ok(p) => p,
             _ => return None,
         };
@@ -118,7 +118,7 @@ pub fn get_sandboxed_path(
     }
 
     // Check for symlink escapes after canonicalization.
-    match std::fs::canonicalize(&final_path) {
+    match dunce::canonicalize(&final_path) {
         Ok(p) if !is_path_in_any_sandbox(&p, &roots) => {
             return None;
         }

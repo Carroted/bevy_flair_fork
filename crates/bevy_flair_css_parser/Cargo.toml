@@ -47,6 +47,8 @@ selectors = { workspace = true }
 
 ariadne = "0.5"
 
+dunce = "1.0.5"
+
 [dev-dependencies]
 indoc = "2.0"
 approx = "0.5"
