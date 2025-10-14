@@ -217,10 +217,10 @@ pub struct NodeStyleData {
     // Data use for calculate style
     pub(crate) is_root: bool,
     pub(crate) name: Option<IdName>,
-    pub(crate) classes: Vec<ClassName>,
+    pub classes: Vec<ClassName>,
     pub(crate) attributes: std::collections::HashMap<AttributeKey, AttributeValue>,
 
-    pub(crate) type_name: Option<&'static str>,
+    pub type_name: Option<&'static str>,
     pub(crate) pseudo_state: NodePseudoState,
     pub(crate) is_pseudo_element: Option<PseudoElement>,
 }
