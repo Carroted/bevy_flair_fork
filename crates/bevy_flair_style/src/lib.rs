@@ -40,6 +40,8 @@ pub use style_sheet::*;
 pub use to_css::*;
 pub use vars::*;
 
+pub use smol_str::SmolStr;
+
 pub(crate) type IdName = smol_str::SmolStr;
 pub(crate) type ClassName = smol_str::SmolStr;
 pub(crate) type AttributeKey = smol_str::SmolStr;
