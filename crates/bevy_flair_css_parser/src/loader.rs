@@ -69,6 +69,38 @@ pub struct CssStyleLoader {
     shorthand_property_registry: ShorthandPropertyRegistry,
 }
 
+trait RealedupPath {
+    fn real_starts_with<P: AsRef<Path>>(&self, base: P) -> bool;
+}
+
+impl RealedupPath for Path {
+    fn real_starts_with<P: AsRef<Path>>(&self, base: P) -> bool {
+        let a = match dunce::canonicalize(self) {
+            Ok(p) => p,
+            Err(_) => self.to_path_buf(),
+        };
+        let b = match dunce::canonicalize(base.as_ref()) {
+            Ok(p) => p,
+            Err(_) => base.as_ref().to_path_buf(),
+        };
+        let a = strip_verbatim_prefix(&a);
+        let b = strip_verbatim_prefix(&b);
+        a
+            // first make it a string to ensure we can operate on it properly
+            .to_string_lossy().to_string()
+            // now just manually remove \\?\
+            .strip_prefix(r"\\?\")
+            .unwrap_or(&a.to_string_lossy().to_string())
+            .replace('\\', "/")
+            .starts_with(
+                &b.to_string_lossy().to_string()
+                    .strip_prefix(r"\\?\")
+                    .unwrap_or(&b.to_string_lossy().to_string())
+                    .replace('\\', "/"),
+            )
+    }
+}
+
 pub fn get_sandboxed_path(
     roots: &Vec<PathBuf>,
     user_path_str: &str,
@@ -187,7 +219,7 @@ pub fn is_path_in_any_sandbox(path_to_check: &Path, sandbox_roots: &[PathBuf]) -
             let normalized_root = strip_verbatim_prefix(&canonical_root);
 
             // 3. Now, perform the comparison on the normalized paths.
-            if normalized_path.starts_with(normalized_root) {
+            if normalized_path.real_starts_with(normalized_root) {
                 return true;
             }
         }
